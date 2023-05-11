@@ -1,51 +1,44 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
-	"time"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
+	"github.com/tagptroll1/groupie-api/model/dbmodel"
+	"github.com/tagptroll1/groupie-api/router"
+
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
 func main() {
+	ctx := context.Background()
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "3333"
 	}
 
-	r := chi.NewRouter()
+	cs := os.Getenv("groupie_cs")
+	db, err := setupDatabase(cs)
+	fmt.Println(db, err)
 
-	r.Use(middleware.Logger)
-	r.Use(middleware.Timeout(60 * time.Second))
-
-	api := chi.NewRouter()
-	api.Route("/lists", func(r chi.Router) {
-		r.Get("/", getAllLists)
-		r.Route("/{list}", func(r chi.Router) {
-			r.Get("/", getList)
-			r.Route("/{item}", func(r chi.Router) {
-				r.Get("/", getItem)
-			})
-		})
-
-	})
-
-	r.Mount("/api", api)
+	r := router.New(ctx, db)
 
 	http.ListenAndServe(":"+port, r)
 }
 
-func getAllLists(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte(`{"lists": [{name: "yehaw"}]}`))
-}
+func setupDatabase(cs string) (*gorm.DB, error) {
+	db, err := gorm.Open(postgres.Open(cs), &gorm.Config{})
 
-func getList(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte(fmt.Sprintf(`{"name": "%s","list": []}`, chi.URLParam(r, "list"))))
-}
+	if err != nil {
+		return nil, err
+	}
 
-func getItem(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte(fmt.Sprintf(`{"name": "%s","watched": true}`, chi.URLParam(r, "item"))))
+	db.AutoMigrate(&dbmodel.List{})
+	db.AutoMigrate(&dbmodel.Item{})
+
+	return db, nil
 }
