@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"os"
 
@@ -21,9 +20,12 @@ func main() {
 		port = "3333"
 	}
 
-	cs := os.Getenv("groupie_cs")
+	cs := os.Getenv("DATABASE_URL")
 	db, err := setupDatabase(cs)
-	fmt.Println(db, err)
+
+	if err != nil {
+		panic(err)
+	}
 
 	r := router.New(ctx, db)
 
