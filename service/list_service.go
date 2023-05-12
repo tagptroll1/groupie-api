@@ -25,7 +25,7 @@ func NewListService(db *gorm.DB) *ListService {
 // TODO: Don't expose this later
 func (s *ListService) GetAllLists(w http.ResponseWriter, r *http.Request) {
 	var lists []dbmodel.List
-	s.db.Find(&lists)
+	s.db.WithContext(r.Context()).Find(&lists)
 	json.NewEncoder(w).Encode(lists)
 }
 
@@ -43,7 +43,8 @@ func (s *ListService) Create(w http.ResponseWriter, r *http.Request) {
 		Title: list.Title,
 		Type:  list.Type,
 	}
-	err = s.db.Model(&dbmodel.List{}).
+	err = s.db.WithContext(r.Context()).
+		Model(&dbmodel.List{}).
 		Create(&dbList).Error
 
 	if err != nil {
@@ -59,6 +60,7 @@ func (s *ListService) Get(w http.ResponseWriter, r *http.Request) {
 	listId := chi.URLParam(r, "listkey")
 	var list dbmodel.List
 	err := s.db.Model(&dbmodel.List{}).
+		WithContext(r.Context()).
 		Preload("Items").
 		Find(&list, "id", listId).
 		Error
@@ -69,6 +71,40 @@ func (s *ListService) Get(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(list)
+}
+
+func (s *ListService) Delete(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	listId := chi.URLParam(r, "listkey")
+
+	var list *dbmodel.List
+	err := s.db.Model(&dbmodel.List{}).
+		WithContext(ctx).
+		Preload("Items").
+		Find(&list, "id", listId).
+		Error
+
+	if err != nil || list == nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	err = s.db.WithContext(ctx).Where("list_id = ?", listId).Delete(&dbmodel.Item{}).Error
+
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("failed to delete items"))
+		return
+	}
+
+	err = s.db.WithContext(ctx).Delete(&dbmodel.List{ID: listId}).Error
+
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 func (s *ListService) Update(w http.ResponseWriter, r *http.Request) {
@@ -82,7 +118,10 @@ func (s *ListService) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = s.db.Model(&dbmodel.List{ID: listId}).Select("title").Updates(list).Error
+	err = s.db.WithContext(r.Context()).
+		Model(&dbmodel.List{ID: listId}).
+		Select("title").
+		Updates(list).Error
 
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)

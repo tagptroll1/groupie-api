@@ -28,6 +28,7 @@ func New(ctx context.Context, db *gorm.DB) *chi.Mux {
 		r.Route("/{listkey}", func(r chi.Router) {
 			r.Get("/", lists.Get)
 			r.Put("/", lists.Update)
+			r.Delete("/", lists.Delete)
 
 			r.Route("/items", func(r chi.Router) {
 				r.Get("/", items.ListItems)
@@ -36,6 +37,7 @@ func New(ctx context.Context, db *gorm.DB) *chi.Mux {
 				r.Route("/{item}", func(r chi.Router) {
 					r.Get("/", items.Get)
 					r.Put("/", items.Update)
+					r.Delete("/", items.Delete)
 
 				})
 

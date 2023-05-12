@@ -51,6 +51,34 @@ func (s *ItemService) Get(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(item)
 }
 
+func (s *ItemService) Delete(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	itemID := chi.URLParam(r, "item")
+	listId := chi.URLParam(r, "listkey")
+
+	var item *dbmodel.Item
+	err := s.db.
+		WithContext(ctx).
+		Where("list_id = ?", listId).
+		Find(&item, "id", itemID).
+		Error
+
+	if err != nil || item == nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	err = s.db.WithContext(ctx).Where("id = ?", itemID).Delete(&dbmodel.Item{}).Error
+
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
 func (s *ItemService) Create(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
