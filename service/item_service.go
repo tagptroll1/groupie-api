@@ -2,11 +2,13 @@ package service
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/tagptroll1/groupie-api/model/dbmodel"
 	"github.com/tagptroll1/groupie-api/model/rest"
+
+	"github.com/go-chi/chi/v5"
 	"gorm.io/gorm"
 )
 
@@ -21,15 +23,24 @@ func NewItemService(db *gorm.DB) *ItemService {
 func (s *ItemService) ListItems(w http.ResponseWriter, r *http.Request) {
 	listId := chi.URLParam(r, "listkey")
 
-	var items []dbmodel.Item
-	err := s.db.WithContext(r.Context()).Find(&items, "list_id = ?", listId).Error
+	var list dbmodel.List
+	res := s.db.WithContext(r.Context()).
+		Model(&dbmodel.List{}).
+		Preload("Items").
+		Where("id = ?", listId).
+		Find(&list)
 
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+	if res.Error != nil {
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	json.NewEncoder(w).Encode(items)
+	if res.RowsAffected == 0 {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	json.NewEncoder(w).Encode(rest.ToList(list).Items)
 }
 
 func (s *ItemService) Get(w http.ResponseWriter, r *http.Request) {
@@ -37,18 +48,23 @@ func (s *ItemService) Get(w http.ResponseWriter, r *http.Request) {
 	listId := chi.URLParam(r, "listkey")
 
 	var item dbmodel.Item
-	err := s.db.
+	res := s.db.
 		WithContext(r.Context()).
 		Where("list_id = ?", listId).
-		Find(&item, "id", itemID).
-		Error
+		Find(&item, "id", itemID)
 
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+	if res.Error != nil {
+		log.Print(res.Error)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	json.NewEncoder(w).Encode(item)
+	if res.RowsAffected == 0 {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	json.NewEncoder(w).Encode(rest.ToItem(item))
 }
 
 func (s *ItemService) Delete(w http.ResponseWriter, r *http.Request) {
@@ -57,22 +73,31 @@ func (s *ItemService) Delete(w http.ResponseWriter, r *http.Request) {
 	itemID := chi.URLParam(r, "item")
 	listId := chi.URLParam(r, "listkey")
 
-	var item *dbmodel.Item
-	err := s.db.
+	var item dbmodel.Item
+	res := s.db.
 		WithContext(ctx).
 		Where("list_id = ?", listId).
-		Find(&item, "id", itemID).
-		Error
+		Find(&item, "id", itemID)
 
-	if err != nil || item == nil {
-		w.WriteHeader(http.StatusBadRequest)
+	if res.Error != nil {
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	err = s.db.WithContext(ctx).Where("id = ?", itemID).Delete(&dbmodel.Item{}).Error
+	if res.RowsAffected == 0 {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
 
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+	res = s.db.WithContext(ctx).Where("id = ?", itemID).Delete(&dbmodel.Item{})
+
+	if res.Error != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if res.RowsAffected == 0 {
+		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 
@@ -85,40 +110,45 @@ func (s *ItemService) Create(w http.ResponseWriter, r *http.Request) {
 	listId := chi.URLParam(r, "listkey")
 
 	var list *dbmodel.List
-	err := s.db.WithContext(ctx).
+	res := s.db.WithContext(ctx).
 		Where("id = ?", listId).
-		First(&list).Error
+		First(&list)
 
-	if err != nil || list == nil {
+	if res.Error != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if res.RowsAffected == 0 {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 
-	var item *rest.CreateItem
-	err = json.NewDecoder(r.Body).Decode(&item)
+	var item rest.CreateItem
+	err := json.NewDecoder(r.Body).Decode(&item)
 
 	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	dbitem := &dbmodel.Item{
+	dbitem := dbmodel.Item{
 		Text:      item.Text,
 		ListID:    listId,
 		State:     item.State,
 		SortIndex: item.SortIndex,
 	}
-	err = s.db.Model(&dbitem).
+	res = s.db.Model(&dbitem).
 		WithContext(ctx).
-		Save(&dbitem).Error
+		Save(&dbitem)
 
-	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
+	if res.Error != nil {
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(item)
+	json.NewEncoder(w).Encode(rest.ToItem(dbitem))
 }
 
 func (s *ItemService) Update(w http.ResponseWriter, r *http.Request) {
@@ -128,34 +158,44 @@ func (s *ItemService) Update(w http.ResponseWriter, r *http.Request) {
 	listId := chi.URLParam(r, "listkey")
 
 	var list *dbmodel.List
-	err := s.db.WithContext(ctx).
+	res := s.db.WithContext(ctx).
 		Where("id = ?", listId).
-		First(&list).Error
+		First(&list)
 
-	if err != nil || list == nil {
+	if res.Error != nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	if res.RowsAffected == 0 {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 
 	var item map[string]interface{}
-	err = json.NewDecoder(r.Body).Decode(&item)
+	err := json.NewDecoder(r.Body).Decode(&item)
 
 	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	delete(item, "updated_at")
 
-	err = s.db.
+	res = s.db.
 		WithContext(ctx).
 		Model(&dbmodel.Item{}).
 		Where("id = ?", itemID).
 		Omit("list_id", "id", "created_at").
-		Updates(&item).Error
+		Updates(&item)
 
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+	if res.Error != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if res.RowsAffected == 0 {
+		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 

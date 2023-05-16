@@ -1,0 +1,572 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "description": "Groupie API!",
+    "version": "0.0.1",
+    "title": "OpenAPI Groupie API"
+  },
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "tags": [
+    {
+      "name": "list",
+      "description": "A list of items"
+    },
+    {
+      "name": "item",
+      "description": "A specific line in a list"
+    }
+  ],
+  "schemes": [
+    "http"
+  ],
+  "paths": {
+    "/lists": {
+      "post": {
+        "tags": [
+          "groupie",
+          "list"
+        ],
+        "summary": "create a new list",
+        "description": "create a new list",
+        "operationId": "listsCreate",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "description": "A new list item body, contains title and type of list",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ListRequest"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successfully created",
+            "schema": {
+              "$ref": "#/definitions/List"
+            }
+          },
+          "400": {
+            "description": "Bad request, like malformed json input"
+          },
+          "500": {
+            "description": "Something went wrong communicating with the data layer"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "groupie",
+          "list"
+        ],
+        "summary": "get all lists available (to be removed)",
+        "description": "get all lists available (to be removed)",
+        "operationId": "listsGetAllLists",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrival of lists",
+            "schema": {
+              "$ref": "#/definitions/AllLists"
+            }
+          },
+          "400": {
+            "description": "Bad request, like malformed json input"
+          },
+          "500": {
+            "description": "Something went wrong communicating with the data layer"
+          }
+        }
+      }
+    },
+    "/lists/{listkey}": {
+      "put": {
+        "tags": [
+          "groupie",
+          "list"
+        ],
+        "summary": "update an exisiting list",
+        "description": "update an exisiting list",
+        "operationId": "listsUpdate",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "listkey",
+            "description": "the identifying key of the list",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "body",
+            "description": "A full or partial ListRequest to modify an exisiting list",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ListRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully modified",
+            "schema": {
+              "$ref": "#/definitions/ListRequest"
+            }
+          },
+          "400": {
+            "description": "Bad request, like malformed json input"
+          },
+          "500": {
+            "description": "Something went wrong communicating with the data layer"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "groupie",
+          "list"
+        ],
+        "summary": "get list",
+        "description": "get a specific list with all its items",
+        "operationId": "listsGet",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "listkey",
+            "description": "the identifying key of the list",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrival of list",
+            "schema": {
+              "$ref": "#/definitions/List"
+            }
+          },
+          "400": {
+            "description": "Bad request, like malformed json input"
+          },
+          "500": {
+            "description": "Something went wrong communicating with the data layer"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "groupie",
+          "list"
+        ],
+        "summary": "delete a list",
+        "description": "delete a specific list and all its items",
+        "operationId": "listsDelete",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "listkey",
+            "description": "the identifying key of the list",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully deleted list and items"
+          },
+          "404": {
+            "description": "Not found, the list to be deleted doesnt exist"
+          },
+          "500": {
+            "description": "Something went wrong communicating with the data layer"
+          }
+        }
+      }
+    },
+    "/lists/{listkey}/items": {
+      "post": {
+        "tags": [
+          "groupie",
+          "item"
+        ],
+        "summary": "create a new item in a list",
+        "description": "create a new item in a list",
+        "operationId": "itemsCreate",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "listkey",
+            "description": "the identifying key of the list",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "body",
+            "description": "A new item body, contains text, state and sort_index",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ItemRequest"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successfully created",
+            "schema": {
+              "$ref": "#/definitions/Item"
+            }
+          },
+          "400": {
+            "description": "Bad request, like malformed json input"
+          },
+          "404": {
+            "description": "Not found, list doesnt exist"
+          },
+          "500": {
+            "description": "Something went wrong communicating with the data layer"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "groupie",
+          "item"
+        ],
+        "summary": "get all items in a list",
+        "description": "get all items in a list",
+        "operationId": "itemsListItems",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "listkey",
+            "description": "the identifying key of the list",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrival of items",
+            "schema": {
+              "$ref": "#/definitions/AllItems"
+            }
+          },
+          "404": {
+            "description": "Not found, list doesnt exist"
+          },
+          "500": {
+            "description": "Something went wrong communicating with the data layer"
+          }
+        }
+      }
+    },
+    "/lists/{listkey}/items/{item}": {
+      "put": {
+        "tags": [
+          "groupie",
+          "item"
+        ],
+        "summary": "update an exisiting item",
+        "description": "update an exisiting item",
+        "operationId": "itemsUpdate",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "listkey",
+            "description": "the identifying key of the list",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "path",
+            "name": "item",
+            "description": "the id of the item",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "in": "body",
+            "name": "body",
+            "description": "A full or partial ItemRequest to modify an exisiting item",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ItemRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully modified",
+            "schema": {
+              "$ref": "#/definitions/ItemRequest"
+            }
+          },
+          "400": {
+            "description": "Bad request, like malformed json input"
+          },
+          "404": {
+            "description": "Not found, list doesnt exist"
+          },
+          "500": {
+            "description": "Something went wrong communicating with the data layer"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "groupie",
+          "item"
+        ],
+        "summary": "get item",
+        "description": "get a specific item",
+        "operationId": "itemsGet",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "listkey",
+            "description": "the identifying key of the list",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "path",
+            "name": "item",
+            "description": "the id of the item",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrival of item",
+            "schema": {
+              "$ref": "#/definitions/Item"
+            }
+          },
+          "404": {
+            "description": "Not found, list or item does not exist"
+          },
+          "500": {
+            "description": "Something went wrong communicating with the data layer"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "groupie",
+          "item"
+        ],
+        "summary": "delete an item",
+        "description": "delete a specific item",
+        "operationId": "itemsDelete",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "listkey",
+            "description": "the identifying key of the list",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "path",
+            "name": "item",
+            "description": "the id of the item",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully deleted item"
+          },
+          "404": {
+            "description": "Not found, the list to be deleted doesnt exist"
+          },
+          "500": {
+            "description": "Something went wrong communicating with the data layer"
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "ListRequest": {
+      "type": "object",
+      "title": "Create list body",
+      "description": "body for creating a new list",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "the title of the list"
+        },
+        "type": {
+          "type": "string",
+          "description": "type of list, like thumbs or checklist",
+          "enum": [
+            "thumbs"
+          ]
+        }
+      }
+    },
+    "List": {
+      "type": "object",
+      "title": "List",
+      "description": "a list of items",
+      "required": [
+        "title",
+        "type"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string",
+          "description": "the title of the list"
+        },
+        "type": {
+          "type": "string",
+          "description": "type of list, like thumbs or checklist",
+          "enum": [
+            "thumbs"
+          ]
+        },
+        "items": {
+          "type": "array",
+          "description": "list of items belonging to this list",
+          "items": {
+            "$ref": "#/definitions/Item"
+          }
+        },
+        "created_at": {
+          "type": "string",
+          "description": "string representation of a time.Time, for when the entity was created"
+        },
+        "updated_at": {
+          "type": "string",
+          "description": "string representation of a time.Time, for when the entity was last updated"
+        }
+      }
+    },
+    "AllLists": {
+      "type": "array",
+      "description": "Response object contains all the lists",
+      "items": {
+        "$ref": "#/definitions/List"
+      }
+    },
+    "ItemRequest": {
+      "type": "object",
+      "title": "Item body sent to the API",
+      "description": "a single item in a list",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "the text of the item"
+        },
+        "state": {
+          "type": "string",
+          "description": "current state of the item (thumbed up, down, checked etc)"
+        },
+        "sort_index": {
+          "type": "integer",
+          "description": "its position in a list"
+        }
+      }
+    },
+    "Item": {
+      "type": "object",
+      "title": "Item",
+      "description": "a single item in a list",
+      "required": [
+        "list_id",
+        "text",
+        "state"
+      ],
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "list_id": {
+          "type": "string",
+          "description": "the list this item belongs to"
+        },
+        "text": {
+          "type": "string",
+          "description": "the text of the item"
+        },
+        "state": {
+          "type": "string",
+          "description": "current state of the item (thumbed up, down, checked etc)"
+        },
+        "sort_index": {
+          "type": "integer",
+          "description": "its position in a list"
+        },
+        "created_at": {
+          "type": "string",
+          "description": "string representation of a time.Time, for when the entity was created"
+        },
+        "updated_at": {
+          "type": "string",
+          "description": "string representation of a time.Time, for when the entity was last updated"
+        }
+      }
+    },
+    "AllItems": {
+      "type": "array",
+      "description": "Response object contains all the items of a list",
+      "items": {
+        "$ref": "#/definitions/Item"
+      }
+    }
+  }
+}

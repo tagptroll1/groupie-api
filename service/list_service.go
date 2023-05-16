@@ -26,7 +26,12 @@ func NewListService(db *gorm.DB) *ListService {
 func (s *ListService) GetAllLists(w http.ResponseWriter, r *http.Request) {
 	var lists []dbmodel.List
 	s.db.WithContext(r.Context()).Find(&lists)
-	json.NewEncoder(w).Encode(lists)
+
+	if len(lists) == 0 {
+		w.WriteHeader(http.StatusNotFound)
+	}
+
+	json.NewEncoder(w).Encode(rest.ToAllLists(lists))
 }
 
 func (s *ListService) Create(w http.ResponseWriter, r *http.Request) {
@@ -48,29 +53,34 @@ func (s *ListService) Create(w http.ResponseWriter, r *http.Request) {
 		Create(&dbList).Error
 
 	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(dbList)
+	json.NewEncoder(w).Encode(rest.ToList(dbList))
 }
 
 func (s *ListService) Get(w http.ResponseWriter, r *http.Request) {
 	listId := chi.URLParam(r, "listkey")
+
 	var list dbmodel.List
-	err := s.db.Model(&dbmodel.List{}).
+	res := s.db.Model(&dbmodel.List{}).
 		WithContext(r.Context()).
 		Preload("Items").
-		Find(&list, "id", listId).
-		Error
+		Find(&list, "id", listId)
 
-	if err != nil {
+	if res.Error != nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 
-	json.NewEncoder(w).Encode(list)
+	if res.RowsAffected == 0 {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	json.NewEncoder(w).Encode(rest.ToList(list))
 }
 
 func (s *ListService) Delete(w http.ResponseWriter, r *http.Request) {
@@ -79,28 +89,38 @@ func (s *ListService) Delete(w http.ResponseWriter, r *http.Request) {
 	listId := chi.URLParam(r, "listkey")
 
 	var list *dbmodel.List
-	err := s.db.Model(&dbmodel.List{}).
+	res := s.db.Model(&dbmodel.List{}).
 		WithContext(ctx).
 		Preload("Items").
-		Find(&list, "id", listId).
-		Error
+		Find(&list, "id", listId)
 
-	if err != nil || list == nil {
+	if res.Error != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if res.RowsAffected == 0 {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	err = s.db.WithContext(ctx).Where("list_id = ?", listId).Delete(&dbmodel.Item{}).Error
 
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+	res = s.db.WithContext(ctx).Where("list_id = ?", listId).Delete(&dbmodel.Item{})
+
+	if res.Error != nil {
+		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("failed to delete items"))
 		return
 	}
 
-	err = s.db.WithContext(ctx).Delete(&dbmodel.List{ID: listId}).Error
+	res = s.db.WithContext(ctx).Delete(&dbmodel.List{ID: listId})
 
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+	if res.Error != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if res.RowsAffected == 0 {
+		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 
@@ -118,12 +138,17 @@ func (s *ListService) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = s.db.WithContext(r.Context()).
+	res := s.db.WithContext(r.Context()).
 		Model(&dbmodel.List{ID: listId}).
 		Select("title").
-		Updates(list).Error
+		Updates(list)
 
-	if err != nil {
+	if res.Error != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if res.RowsAffected == 0 {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
