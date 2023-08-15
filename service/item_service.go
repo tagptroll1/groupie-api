@@ -74,8 +74,8 @@ func (s *ItemService) Delete(w http.ResponseWriter, r *http.Request) {
 	listId := chi.URLParam(r, "listkey")
 
 	var item dbmodel.Item
-	res := s.db.
-		WithContext(ctx).
+	res := s.db.WithContext(ctx).
+		Limit(1).
 		Where("list_id = ?", listId).
 		Find(&item, "id", itemID)
 
@@ -111,8 +111,8 @@ func (s *ItemService) Create(w http.ResponseWriter, r *http.Request) {
 
 	var list *dbmodel.List
 	res := s.db.WithContext(ctx).
-		Where("id = ?", listId).
-		First(&list)
+		Limit(1).
+		Find(&list, "id = ?", listId)
 
 	if res.Error != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -159,8 +159,8 @@ func (s *ItemService) Update(w http.ResponseWriter, r *http.Request) {
 
 	var list *dbmodel.List
 	res := s.db.WithContext(ctx).
-		Where("id = ?", listId).
-		First(&list)
+		Limit(1).
+		Find(&list, "id = ?", listId)
 
 	if res.Error != nil {
 		w.WriteHeader(http.StatusNotFound)
